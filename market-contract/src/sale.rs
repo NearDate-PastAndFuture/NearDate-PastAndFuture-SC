@@ -4,6 +4,20 @@ use near_sdk::promise_result_as_success;
 //struct that holds important information about each sale on the market
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
+pub struct SaleOffer {
+    //owner of the sale
+    pub owner_id: AccountId,
+    //nft contract where the token was minted
+    pub nft_contract_id: String,
+    //actual token ID for sale
+    pub token_id: String,
+    //sale offer price in yoctoNEAR that the token is listed for
+    pub price: SalePriceInYoctoNear,
+}
+
+//struct that holds important information about each sale on the market
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
 pub struct Sale {
     //owner of the sale
     pub owner_id: AccountId,

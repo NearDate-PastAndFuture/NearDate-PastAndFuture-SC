@@ -8,9 +8,16 @@ impl Contract {
         token_id: TokenId,
         metadata: TokenMetadata,
         receiver_id: AccountId,
+        message_url: String,
         //we add an optional parameter for perpetual royalties
         perpetual_royalties: Option<HashMap<AccountId, u32>>,
     ) {
+        //TODO assert() format token_id
+        //check if owner then free, otherwise if user then charge fee 
+        //check max_free_nft_number
+        //get the attached deposit and make sure it's greater than mint price
+        //let deposit = env::attached_deposit();
+
         //measure the initial storage being used on the contract
         let initial_storage_usage = env::storage_usage();
 
@@ -38,6 +45,7 @@ impl Contract {
             next_approval_id: 0,
             //the map of perpetual royalties for the token (The owner will get 100% - total perpetual royalties)
             royalty,
+            message: message_url,
         };
 
         //insert the token ID and token struct and make sure that the token doesn't exist

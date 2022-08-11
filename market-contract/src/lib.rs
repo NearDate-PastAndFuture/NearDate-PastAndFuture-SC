@@ -11,6 +11,9 @@ use std::collections::HashMap;
 use crate::external::*;
 use crate::internal::*;
 use crate::sale::*;
+use crate::rent::*;
+use crate::bid::*;
+
 use near_sdk::env::STORAGE_PRICE_PER_BYTE;
 
 mod external;
@@ -18,6 +21,8 @@ mod internal;
 mod nft_callbacks;
 mod sale;
 mod sale_views;
+mod rent;
+mod bid;
 
 //GAS constants to attach to calls
 const GAS_FOR_RESOLVE_PURCHASE: Gas = Gas(115_000_000_000_000);
@@ -28,6 +33,8 @@ const STORAGE_PER_SALE: u128 = 1000 * STORAGE_PRICE_PER_BYTE;
 
 //every sale will have a unique ID which is `CONTRACT + DELIMITER + TOKEN_ID`
 static DELIMETER: &str = ".";
+
+pub const nft_max_rent_slot:u32 = 10;
 
 //Creating custom types to use within the contract. This makes things more readable. 
 pub type SalePriceInYoctoNear = U128;
@@ -64,6 +71,15 @@ pub struct Contract {
 
     //keep track of the storage that accounts have payed
     pub storage_deposits: LookupMap<AccountId, Balance>,
+
+    //keep track of the deposit offer buy 
+    pub bid_sale_deposits: LookupMap<AccountId, SaleOffer>,
+
+    //keep track of the deposit offer rent
+    pub bid_rent_deposits: LookupMap<AccountId, RentOffer>,
+
+    //keep track of rents
+    pub rents: UnorderedMap<ContractAndTokenId, Rent>,
 }
 
 /// Helper structure to for keys of the persistent collections.
@@ -78,6 +94,9 @@ pub enum StorageKey {
     ByNFTTokenTypeInner { token_type_hash: CryptoHash },
     FTTokenIds,
     StorageDeposits,
+    BidSaleDeposits,
+    BidRentDeposits,
+    Rents,
 }
 
 #[near_bindgen]
@@ -98,6 +117,9 @@ impl Contract {
             by_owner_id: LookupMap::new(StorageKey::ByOwnerId),
             by_nft_contract_id: LookupMap::new(StorageKey::ByNFTContractId),
             storage_deposits: LookupMap::new(StorageKey::StorageDeposits),
+            bid_sale_deposits: LookupMap::new(StorageKey::BidSaleDeposits),
+            bid_rent_deposits: LookupMap::new(StorageKey::BidRentDeposits),
+            rents: UnorderedMap::new(StorageKey::Rents),
         };
 
         //return the Contract object

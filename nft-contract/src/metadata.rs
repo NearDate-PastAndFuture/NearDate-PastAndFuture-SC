@@ -1,5 +1,6 @@
 use crate::*;
 pub type TokenId = String;
+
 //defines the payout type we'll be returning as a part of the royalty standards.
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
@@ -46,6 +47,8 @@ pub struct Token {
     pub next_approval_id: u64,
     //keep track of the royalty percentages for the token in a hash map
     pub royalty: HashMap<AccountId, u32>,
+    //<URL> reference link refer to text of owner and renting slots
+    pub message: String,
 }
 
 //The Json token is what will be returned from view calls. 
@@ -62,6 +65,8 @@ pub struct JsonToken {
     pub approved_account_ids: HashMap<AccountId, u64>,
     //keep track of the royalty percentages for the token in a hash map
     pub royalty: HashMap<AccountId, u32>,
+    //<URL> reference link refer to text of owner and renting slots
+    pub message: String,
 }
 
 pub trait NonFungibleTokenMetadata {
