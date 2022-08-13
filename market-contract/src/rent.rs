@@ -9,24 +9,7 @@ pub struct RentData {
     pub renting_account_id: AccountId, // AccountId rent this slot
     pub starts_at: Option<u64>, // When rent NFT slot starts being valid, Unix epoch in milliseconds
     pub expires_at: Option<u64>, // When rent NFT slot expires, Unix epoch in milliseconds
-}
-
-//struct that holds important information about each rent on the market
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct RentOffer {
-    //owner of the NFT
-    pub owner_id: AccountId,
-    //nft contract where the token was minted
-    pub nft_contract_id: String,
-    //actual token ID for sale
-    pub token_id: String,
-    //rent offer price in yoctoNEAR that the token is listed for
-    pub price: SalePriceInYoctoNear,
-    //
-    pub message_url: String,
-    //rent offer data
-    pub rent_data: RentData,
+    pub rent_message: String,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]

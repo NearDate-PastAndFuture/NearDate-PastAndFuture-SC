@@ -21,8 +21,10 @@ mod internal;
 mod nft_callbacks;
 mod sale;
 mod sale_views;
-mod rent;
 mod bid;
+mod bid_views;
+mod rent;
+mod rent_views;
 
 //GAS constants to attach to calls
 const GAS_FOR_RESOLVE_PURCHASE: Gas = Gas(115_000_000_000_000);
@@ -72,14 +74,35 @@ pub struct Contract {
     //keep track of the storage that accounts have payed
     pub storage_deposits: LookupMap<AccountId, Balance>,
 
-    //keep track of the deposit offer buy 
-    pub bid_sale_deposits: LookupMap<AccountId, SaleOffer>,
+    //keep track of the bid Near that accounts have payed
+    pub bid_token_deposits: LookupMap<AccountId, Balance>,
 
-    //keep track of the deposit offer rent
-    pub bid_rent_deposits: LookupMap<AccountId, RentOffer>,
+    //keep track of the bid Near that accounts have payed
+    pub bid_rent_deposits: LookupMap<AccountId, Balance>,
 
-    //keep track of rents
-    pub rents: UnorderedMap<ContractAndTokenId, Rent>,
+    //keep track of the bid token offer by Account ID
+    pub bid_token_by_account: LookupMap<AccountId, Vec<BidToken>>,
+
+    //keep track of the bid offer rent
+    pub bid_rent_by_account: LookupMap<AccountId, Vec<BidRent>>,
+
+    //keep track of the bid token offer by Token ID
+    pub bid_token_by_token_id: LookupMap<TokenId, Vec<BidToken>>,
+
+    //keep track of the bid rent offer by Token ID
+    pub bid_rent_by_token_id: LookupMap<TokenId, Vec<BidRent>>,
+
+    //keep track of rents by token id
+    pub rent_by_token: UnorderedMap<TokenId, Vec<Rent>>,
+
+    //keep tract of rents by account
+    pub rent_by_account: UnorderedMap<AccountId, Vec<Rent>>,
+
+    //keep track current Bid Token Id
+    pub bid_token_id: u64,
+
+    //keep track current Bid Rent Id
+    pub bid_rent_id : u64,
 }
 
 /// Helper structure to for keys of the persistent collections.
@@ -94,9 +117,16 @@ pub enum StorageKey {
     ByNFTTokenTypeInner { token_type_hash: CryptoHash },
     FTTokenIds,
     StorageDeposits,
-    BidSaleDeposits,
+    BidTokenDeposits,
     BidRentDeposits,
-    Rents,
+    BidTokenByAccount,
+    BidRentByAccount,
+    BidTokenById,
+    BidRentById,
+    RentByToken,
+    RentByAccount,
+    BidTokenId,
+    BidRendId,
 }
 
 #[near_bindgen]
@@ -117,9 +147,16 @@ impl Contract {
             by_owner_id: LookupMap::new(StorageKey::ByOwnerId),
             by_nft_contract_id: LookupMap::new(StorageKey::ByNFTContractId),
             storage_deposits: LookupMap::new(StorageKey::StorageDeposits),
-            bid_sale_deposits: LookupMap::new(StorageKey::BidSaleDeposits),
+            bid_token_deposits : LookupMap::new(StorageKey::BidTokenDeposits),
             bid_rent_deposits: LookupMap::new(StorageKey::BidRentDeposits),
-            rents: UnorderedMap::new(StorageKey::Rents),
+            bid_token_by_account: LookupMap::new(StorageKey::BidTokenByAccount),
+            bid_rent_by_account: LookupMap::new(StorageKey::BidRentByAccount),
+            rent_by_token: UnorderedMap::new(StorageKey::RentByToken),
+            rent_by_account : UnorderedMap::new(StorageKey::RentByAccount),
+            bid_token_by_token_id: LookupMap::new(StorageKey::BidTokenById),
+            bid_rent_by_token_id: LookupMap::new(StorageKey::BidRentById),
+            bid_token_id: 0,
+            bid_rent_id: 0,
         };
 
         //return the Contract object
