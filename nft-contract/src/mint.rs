@@ -45,6 +45,7 @@ impl Contract {
             next_approval_id: 0,
             //the map of perpetual royalties for the token (The owner will get 100% - total perpetual royalties)
             royalty,
+            //message url to 
             message: message_url,
         };
 
