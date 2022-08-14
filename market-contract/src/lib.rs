@@ -36,7 +36,7 @@ const STORAGE_PER_SALE: u128 = 1000 * STORAGE_PRICE_PER_BYTE;
 //every sale will have a unique ID which is `CONTRACT + DELIMITER + TOKEN_ID`
 static DELIMETER: &str = ".";
 
-pub const nft_max_rent_slot:u32 = 10;
+pub const NFT_MAX_RENT_SLOT:usize = 10;
 
 //Creating custom types to use within the contract. This makes things more readable. 
 pub type SalePriceInYoctoNear = U128;
@@ -93,10 +93,10 @@ pub struct Contract {
     pub bid_rent_by_token_id: LookupMap<TokenId, Vec<BidRent>>,
 
     //keep track of rents by token id
-    pub rent_by_token: UnorderedMap<TokenId, Vec<Rent>>,
+    pub rent_by_token: UnorderedMap<TokenId, Rent>,
 
     //keep tract of rents by account
-    pub rent_by_account: UnorderedMap<AccountId, Vec<Rent>>,
+    pub rent_by_account: UnorderedMap<AccountId, Vec<RentData>>,
 
     //keep track current Bid Token Id
     pub bid_token_id: u64,

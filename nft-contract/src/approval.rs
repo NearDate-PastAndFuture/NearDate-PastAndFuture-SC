@@ -18,6 +18,9 @@ pub trait NonFungibleTokenCore {
 
     //revoke all accounts from transferring the token on your behalf
     fn nft_revoke_all(&mut self, token_id: TokenId);
+
+    // allow user update text to show
+    fn nft_update(&mut self, token_id: TokenId, message_url: String);
 }
 
 #[ext_contract(ext_non_fungible_approval_receiver)]
@@ -171,5 +174,31 @@ impl NonFungibleTokenCore for Contract {
             //insert the token back into the tokens_by_id collection with the approved account IDs cleared
             self.tokens_by_id.insert(&token_id, &token);
         }
+    }
+
+    // allow user update text to show
+    #[payable]
+    fn nft_update(&mut self, token_id: TokenId, message_url: String)
+    {
+            /*
+            assert at least one yocto for security reasons - this will cause a redirect to the NEAR wallet.
+            The user needs to attach enough to pay for storage on the contract
+        */
+        assert_at_least_one_yocto();
+
+        //get the token object from the token ID
+        let mut token = self.tokens_by_id.get(&token_id).expect("No token");
+
+        //make sure that the person calling the function is the owner of the token
+        assert_eq!(
+            &env::predecessor_account_id(),
+            &token.owner_id,
+            "Predecessor must be the token owner."
+        );
+
+        //update message link
+        token.message = message_url;
+        //insert the token back into the tokens_by_id collection
+        self.tokens_by_id.insert(&token_id, &token);
     }
 }

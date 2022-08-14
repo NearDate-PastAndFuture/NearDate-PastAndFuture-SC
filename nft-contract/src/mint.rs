@@ -13,10 +13,15 @@ impl Contract {
         perpetual_royalties: Option<HashMap<AccountId, u32>>,
     ) {
         //TODO assert() format token_id
+
         //check if owner then free, otherwise if user then charge fee 
         //check max_free_nft_number
-        //get the attached deposit and make sure it's greater than mint price
-        //let deposit = env::attached_deposit();
+        let account_id = env::predecessor_account_id();
+        if account_id == self.owner_id {
+            // free mint
+        }
+
+        let deposit = env::attached_deposit();
 
         //measure the initial storage being used on the contract
         let initial_storage_usage = env::storage_usage();
