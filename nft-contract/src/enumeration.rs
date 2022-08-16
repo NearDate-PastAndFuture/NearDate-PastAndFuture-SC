@@ -1,4 +1,5 @@
 use crate::*;
+use rand::{Rng, SeedableRng};
 
 #[near_bindgen]
 impl Contract {
@@ -72,5 +73,45 @@ impl Contract {
             .map(|token_id| self.nft_token(token_id.clone()).unwrap())
             //since we turned the keys into an iterator, we need to turn it back into a vector to return
             .collect()
+    }
+
+    pub fn nft_tokens_by_date(
+        &self,
+        date: String,
+    ) ->Vec<JsonToken> {
+        let total = self.token_metadata_by_id.len();
+        //iterate through each token using an iterator
+        self.token_metadata_by_id.keys()
+            //filter
+            .filter(|token_id| token_id[4..] == date)
+            //we'll map the token IDs which are strings into Json Tokens
+            .map(|token_id| self.nft_token(token_id.clone()).unwrap())
+            //since we turned the keys into an iterator, we need to turn it back into a vector to return
+            .collect()
+    }
+
+    pub fn get_random_nfts(
+        &self,
+        number : Option<u64>,
+    )->Vec<JsonToken>{
+        //iterate through each token using an iterator
+        let keys = self.token_metadata_by_id.keys_as_vector();
+        //let mut rng = rand::thread_rng();
+        let mut rng = rand_xorshift::XorShiftRng::seed_from_u64(0);
+        let mut ret = vec![];
+
+        let num = u64::from(number.unwrap_or(10));
+
+        for n in 0..num
+        {
+            //let r = rand::thread_rng().gen_range(0,keys.len());
+            let r = rng.gen::<u64>() % keys.len();
+            //let token_id = keys.get(r);
+            if let Some(token_id) = keys.get(r)
+            {
+                ret.push(self.nft_token(token_id).unwrap());
+            }
+        }
+        return ret;
     }
 }

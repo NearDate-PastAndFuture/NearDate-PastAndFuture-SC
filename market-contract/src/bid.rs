@@ -4,23 +4,23 @@ use crate::*;
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BidToken{
-    bid_account_id: AccountId,
-    token_id: TokenId,
-    bid_id: u64,
-    price: SalePriceInYoctoNear,
+    pub bid_account_id: AccountId,
+    pub token_id: TokenId,
+    pub bid_id: u64,
+    pub price: SalePriceInYoctoNear,
 }
 
 //Bid for rent structure
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BidRent{
-    bid_account_id: AccountId,
-    token_id: TokenId,
-    bid_id: u64,
-    price: SalePriceInYoctoNear,
-    message_url: String,
-    starts_at: u64, // When rent NFT slot starts being valid, Unix epoch in milliseconds
-    expires_at: u64, // When rent NFT slot expires, Unix epoch in milliseconds
+    pub bid_account_id: AccountId,
+    pub token_id: TokenId,
+    pub bid_id: u64,
+    pub price: SalePriceInYoctoNear,
+    pub message_url: String,
+    pub starts_at: u64, // When rent NFT slot starts being valid, Unix epoch in milliseconds
+    pub expires_at: u64, // When rent NFT slot expires, Unix epoch in milliseconds
 }
 
 #[near_bindgen]
@@ -78,7 +78,7 @@ impl Contract {
 
     //Allows users to withdraw offer buy NFT
     #[payable]
-    pub fn bid_token_cancel_and_widthdraw(&mut self, bid_id: u64) {
+    pub fn bid_token_cancel_and_withdraw(&mut self, bid_id: u64) {
         //make sure the user attaches exactly 1 yoctoNEAR for security purposes.
         //this will redirect them to the NEAR wallet (or requires a full access key). 
         assert_one_yocto();
@@ -116,16 +116,72 @@ impl Contract {
     }
 
     #[payable]
-    pub fn accept_bid_token(&mut self, bid_id: u32){
-        assert_one_yocto();
-        let account_id = env::predecessor_account_id();
-
+    pub fn accept_bid_token(&mut self, nft_contract_id: AccountId,token_id: TokenId, bid_id: u64){
+        //assert_one_yocto();
+        let accept_id = env::predecessor_account_id();
+        //check accept_id == owner
+        
         //transfer nft and get Near bidded from contract
+        let bid = self.internal_get_bid_token(token_id, bid_id);
 
-        //remove BidToken object
+        ext_contract::ext(nft_contract_id)
+            // Attach 1 yoctoNEAR with static GAS equal to the GAS for nft transfer. Also attach an unused GAS weight of 1 by default.
+            .with_attached_deposit(1)
+            .with_static_gas(GAS_FOR_NFT_TRANSFER)
+            .nft_transfer_payout(
+                bid.bid_account_id.clone(), //purchaser (person to transfer the NFT to)
+                bid.token_id.clone(), //token ID to transfer
+                0,
+            "payout from market".to_string(), //memo (to include some context)
+            /*
+                the price that the token was purchased for. This will be used in conjunction with the royalty percentages
+                for the token in order to determine how much money should go to which account. 
+            */
+            bid.price,
+            10, //the maximum amount of accounts the market can payout at once (this is limited by GAS)
+            )
+        //after the transfer payout has been initiated, we resolve the promise by calling our own resolve_purchase function. 
+        //resolve purchase will take the payout object returned from the nft_transfer_payout and actually pay the accounts
+        .then(
+            Self::ext(env::current_account_id())
+            .with_static_gas(GAS_FOR_RESOLVE_PURCHASE)
+            .resolve_purchase_bid(
+                accept_id, //the buyer and price are passed in incase something goes wrong and we need to refund the buyer
+                bid.price.0,
+            )
+        );
 
+        //remove from bid token by account 
+        let account_id =  bid.bid_account_id;
+        let mut bids_by_account = self.bid_token_by_account.get(&account_id).unwrap(); 
+        
+        let index = bids_by_account.iter().position(|a| a.bid_id == bid_id).unwrap();
+        bids_by_account.remove(index);
+        self.bid_token_by_account.insert(&account_id, &bids_by_account);
+
+        //remove from bid token by token id
+        let token_id_ = bid.token_id;
+        let mut bids_by_token_id = self.bid_token_by_token_id.get(&token_id_).unwrap();
+        let index_token = bids_by_token_id.iter().position(|a| a.bid_id == bid_id).unwrap();
+        bids_by_token_id.remove(index_token);
+        self.bid_token_by_token_id.insert(&token_id_, &bids_by_token_id);
     }
+    #[private]
+    pub fn resolve_purchase_bid(
+        &mut self,
+        receiver_id: AccountId,
+        price: u128,
+    ){
+        //widthdaw bidded amount 
+        let mut balance: u128 = self.bid_token_deposits.get(&receiver_id).unwrap_or(0);
 
+        if(price <= balance)
+        {
+            Promise::new(receiver_id.clone()).transfer(price);
+            balance -= price;
+            self.bid_token_deposits.insert(&receiver_id, &balance);
+        }
+    }
     //Allows users to deposit to rent
     //Optional account ID is to users can pay for other people.
     #[payable]

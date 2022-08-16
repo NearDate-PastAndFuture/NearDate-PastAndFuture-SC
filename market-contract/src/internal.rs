@@ -55,4 +55,22 @@ impl Contract {
         //return the sale object
         sale
     }
+
+    pub(crate) fn internal_get_bid_token(
+        &mut self,
+        token_id: TokenId,
+        bid_id : u64,
+    ) -> BidToken {
+        let mut bids_by_token = self.bid_token_by_token_id.get(&token_id).unwrap(); 
+        
+        let index = bids_by_token.iter().position(|a| a.bid_id == bid_id).unwrap();
+        let bid = &bids_by_token[index];
+        return BidToken {
+            bid_account_id : bid.bid_account_id.clone(),
+            token_id : bid.token_id.clone(),
+            bid_id : bid.bid_id,
+            price : bid.price,
+        };
+         
+    }
 }
