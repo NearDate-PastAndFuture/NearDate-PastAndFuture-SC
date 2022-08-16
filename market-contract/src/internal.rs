@@ -61,9 +61,9 @@ impl Contract {
         token_id: TokenId,
         bid_id : u64,
     ) -> BidToken {
-        let mut bids_by_token = self.bid_token_by_token_id.get(&token_id).unwrap(); 
+        let mut bids_by_token = self.bid_token_by_token_id.get(&token_id).expect("no bid by token_id");
         
-        let index = bids_by_token.iter().position(|a| a.bid_id == bid_id).unwrap();
+        let index = bids_by_token.iter().position(|a| a.bid_id == bid_id).expect("no bid_id");
         let bid = &bids_by_token[index];
         return BidToken {
             bid_account_id : bid.bid_account_id.clone(),

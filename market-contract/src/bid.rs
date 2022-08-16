@@ -1,4 +1,5 @@
 use crate::*;
+use near_sdk::promise_result_as_success;
 
 //Bid for buy token structure
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
@@ -117,18 +118,18 @@ impl Contract {
 
     #[payable]
     pub fn accept_bid_token(&mut self, nft_contract_id: AccountId,token_id: TokenId, bid_id: u64){
-        //assert_one_yocto();
-        let accept_id = env::predecessor_account_id();
-        //check accept_id == owner
+        assert_one_yocto();
+        let accept_id = env::signer_account_id();
         
         //transfer nft and get Near bidded from contract
-        let bid = self.internal_get_bid_token(token_id, bid_id);
+        let bid = self.internal_get_bid_token(token_id.clone(), bid_id);
 
         ext_contract::ext(nft_contract_id)
             // Attach 1 yoctoNEAR with static GAS equal to the GAS for nft transfer. Also attach an unused GAS weight of 1 by default.
             .with_attached_deposit(1)
             .with_static_gas(GAS_FOR_NFT_TRANSFER)
-            .nft_transfer_payout(
+            .nft_transfer_bid_payout(
+                accept_id.clone(),
                 bid.bid_account_id.clone(), //purchaser (person to transfer the NFT to)
                 bid.token_id.clone(), //token ID to transfer
                 0,
@@ -148,9 +149,76 @@ impl Contract {
             .resolve_purchase_bid(
                 accept_id, //the buyer and price are passed in incase something goes wrong and we need to refund the buyer
                 bid.price.0,
+                token_id.clone(),
+                bid_id,
             )
         );
+    }
 
+    #[private]
+    pub fn resolve_purchase_bid(
+        &mut self,
+        receiver_id: AccountId,
+        price: u128,
+        token_id: TokenId, 
+        bid_id: u64,
+    ){
+        // checking for payout information returned from the nft_transfer_payout method
+        let payout_option = promise_result_as_success().and_then(|value| {
+            //if we set the payout_option to None, that means something went wrong and we should refund the buyer
+            near_sdk::serde_json::from_slice::<Payout>(&value)
+                //converts the result to an optional value
+                .ok()
+                //returns None if the none. Otherwise executes the following logic
+                .and_then(|payout_object| {
+                    //we'll check if length of the payout object is > 10 or it's empty. In either case, we return None
+                    if payout_object.payout.len() > 10 || payout_object.payout.is_empty() {
+                        env::log_str("Cannot have more than 10 royalties");
+                        None
+                    
+                    //if the payout object is the correct length, we move forward
+                    } else {
+                        //we'll keep track of how much the nft contract wants us to payout. Starting at the full price payed by the buyer
+                        let mut remainder = price;
+                        
+                        //loop through the payout and subtract the values from the remainder. 
+                        for &value in payout_object.payout.values() {
+                            //checked sub checks for overflow or any errors and returns None if there are problems
+                            remainder = remainder.checked_sub(value.0)?;
+                        }
+                        //Check to see if the NFT contract sent back a faulty payout that requires us to pay more or too little. 
+                        //The remainder will be 0 if the payout summed to the total price. The remainder will be 1 if the royalties
+                        //we something like 3333 + 3333 + 3333. 
+                        if remainder == 0 || remainder == 1 {
+                            //set the payout_option to be the payout because nothing went wrong
+                            Some(payout_object.payout)
+                        } else {
+                            //if the remainder was anything but 1 or 0, we return None
+                            None
+                        }
+                    }
+                })
+        });
+
+        // if the payout option was some payout, we set this payout variable equal to that some payout
+        let payout = if let Some(payout_option) = payout_option {
+            payout_option
+        } else {
+            //the payout option was None
+            return;
+        };
+
+        //transfer bid token to seller
+        let mut balance: u128 = self.bid_token_deposits.get(&receiver_id).unwrap_or(0);
+
+        if(price <= balance)
+        {
+            Promise::new(receiver_id.clone()).transfer(price);
+            balance -= price;
+            self.bid_token_deposits.insert(&receiver_id, &balance);
+        }
+
+        let bid = self.internal_get_bid_token(token_id, bid_id);
         //remove from bid token by account 
         let account_id =  bid.bid_account_id;
         let mut bids_by_account = self.bid_token_by_account.get(&account_id).unwrap(); 
@@ -165,22 +233,6 @@ impl Contract {
         let index_token = bids_by_token_id.iter().position(|a| a.bid_id == bid_id).unwrap();
         bids_by_token_id.remove(index_token);
         self.bid_token_by_token_id.insert(&token_id_, &bids_by_token_id);
-    }
-    #[private]
-    pub fn resolve_purchase_bid(
-        &mut self,
-        receiver_id: AccountId,
-        price: u128,
-    ){
-        //widthdaw bidded amount 
-        let mut balance: u128 = self.bid_token_deposits.get(&receiver_id).unwrap_or(0);
-
-        if(price <= balance)
-        {
-            Promise::new(receiver_id.clone()).transfer(price);
-            balance -= price;
-            self.bid_token_deposits.insert(&receiver_id, &balance);
-        }
     }
     //Allows users to deposit to rent
     //Optional account ID is to users can pay for other people.
@@ -308,12 +360,14 @@ impl Contract {
         //get 
         let mut rent_data = RentData{
             renting_account_id : bid_account.clone(),
+            token_id : token_id.clone(),
             starts_at : bid.starts_at,
             expires_at : bid.expires_at,
             rent_message : bid.message_url.clone(),
         };
         let mut rent_data_ = RentData{
             renting_account_id : bid_account.clone(),
+            token_id: token_id.clone(),
             starts_at : bid.starts_at,
             expires_at : bid.expires_at,
             rent_message : bid.message_url.clone(),
@@ -375,5 +429,15 @@ impl Contract {
         bids_by_account.remove(index_rent);
         self.bid_rent_by_account.insert(&bid_account, &bids_by_account);
     }
+}
 
+#[ext_contract(ext_self)]
+trait ExtSelf {
+    fn resolve_purchase_bid(
+        &mut self,
+        receiver_id: AccountId,
+        price: U128,
+        token_id: TokenId, 
+        bid_id: u64,
+    ) -> Promise;
 }
