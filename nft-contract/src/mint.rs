@@ -53,31 +53,30 @@ impl Contract {
         perpetual_royalties: Option<HashMap<AccountId, u32>>,
         price: Option<U128>,
     ) {
+        let d =  env::block_timestamp() - self.last_mint_moment;
+        assert!(d > DEFAULT_MINT_TIME, "{} ms to next mint", (DEFAULT_MINT_TIME - d) / 1_000_000);
         //TODO assert() format token_id
         let is_valid = is_valid_date(token_id.clone());
         assert!(is_valid, "not a validate date");
 
-        //check if owner then free, otherwise if user then charge fee 
-        //check max_free_nft_number
         let account_id = env::predecessor_account_id();
 
         let mut mint_fee :U128 = U128(0);
-        if(self.token_metadata_by_id.len() > MAX_FREE_NFT)
-        {
-            if let Some(mint_price) = price
-            {
-                mint_fee = mint_price ;
-            }
-            else{
-                mint_fee = U128(1_000_000_000_000_000_000_000_000); // 1 $NEAR as yoctoNEAR
-            }
-        }
 
         if account_id == self.owner_id {
-            // free mint
             mint_fee = U128(0);
         }
-
+        else if(!self.tokens_per_owner.contains_key(&receiver_id)) //first time mint 
+        {
+            mint_fee = U128(0);
+        }else if let Some(mint_price) = price
+        {
+            mint_fee = mint_price ;
+        }
+        else{
+            mint_fee = DEFAULT_MINT_PRICE; 
+        }
+        
         // check 
         let attached_deposit = env::attached_deposit();
 
@@ -125,6 +124,9 @@ impl Contract {
 
         //call the internal method for adding the token to the owner
         self.internal_add_token_to_owner(&token.owner_id, &token_id);
+
+        //set last mint time
+        self.last_mint_moment = env::block_timestamp();
 
         // Construct the mint log as per the events standard.
         let nft_mint_log: EventLog = EventLog {

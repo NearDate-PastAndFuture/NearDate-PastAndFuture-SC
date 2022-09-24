@@ -28,8 +28,10 @@ mod events;
 pub const NFT_METADATA_SPEC: &str = "nft-1.0.0";
 /// This is the name of the NFT standard we're using
 pub const NFT_STANDARD_NAME: &str = "nep171";
-
-pub const MAX_FREE_NFT:u32 = 5452;
+/// Default price to mint nft
+pub const DEFAULT_MINT_PRICE:U128 =  U128(1_000_000_000_000_000_000_000_000); // 1 $NEAR as yoctoNEAR
+/// Default time duration for free mint
+pub const DEFAULT_MINT_TIME:u64 = 10_000_000_000; // 10s
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -48,6 +50,9 @@ pub struct Contract {
 
     //keeps track of the metadata for the contract
     pub metadata: LazyOption<NFTContractMetadata>,
+
+    //keep track of last mint moment
+    pub last_mint_moment: u64,
 }
 
 /// Helper structure for keys of the persistent collections.
@@ -108,6 +113,7 @@ impl Contract {
                 StorageKey::NFTContractMetadata.try_to_vec().unwrap(),
                 Some(&metadata),
             ),
+            last_mint_moment: env::block_timestamp(),
         };
 
         //return the Contract object
