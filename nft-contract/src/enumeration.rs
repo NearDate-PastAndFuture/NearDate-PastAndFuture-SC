@@ -113,8 +113,7 @@ impl Contract {
 
     // get next moment for mint and percentage success
     pub fn get_mint(&self) -> (u64, u8) {
-        let mut d = self.last_mint_moment + DEFAULT_MINT_TIME;
-        d /= 1_000_000; //ms
+        let d = self.last_mint_moment + DEFAULT_MINT_TIME;
         let percent = ((MAX_NUMBER_OF_NFT - self.token_metadata_by_id.len())*100/MAX_NUMBER_OF_NFT) as u8;
 
         (d, percent)
