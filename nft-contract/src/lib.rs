@@ -33,7 +33,7 @@ pub const MAX_NUMBER_OF_NFT:u64 = 75452;
 /// Default price to mint nft
 pub const DEFAULT_MINT_PRICE:U128 =  U128(1_000_000_000_000_000_000_000_000); // 1 $NEAR as yoctoNEAR
 /// Default time duration for free mint
-pub const DEFAULT_MINT_TIME:u64 = 10_000_000_000; // 10s
+pub const DEFAULT_MINT_TIME:u64 = 600_000; //10 min
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -115,7 +115,7 @@ impl Contract {
                 StorageKey::NFTContractMetadata.try_to_vec().unwrap(),
                 Some(&metadata),
             ),
-            last_mint_moment: env::block_timestamp(),
+            last_mint_moment: env::block_timestamp_ms(),
         };
 
         //return the Contract object
