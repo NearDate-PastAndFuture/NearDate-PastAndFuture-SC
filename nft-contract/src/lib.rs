@@ -28,6 +28,8 @@ mod events;
 pub const NFT_METADATA_SPEC: &str = "nft-1.0.0";
 /// This is the name of the NFT standard we're using
 pub const NFT_STANDARD_NAME: &str = "nep171";
+/// This is maximum number NFT can mint
+pub const MAX_NUMBER_OF_NFT:u64 = 75452;
 /// Default price to mint nft
 pub const DEFAULT_MINT_PRICE:U128 =  U128(1_000_000_000_000_000_000_000_000); // 1 $NEAR as yoctoNEAR
 /// Default time duration for free mint

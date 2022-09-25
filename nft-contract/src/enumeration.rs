@@ -1,5 +1,4 @@
 use crate::*;
-use rand::{Rng, SeedableRng};
 
 #[near_bindgen]
 impl Contract {
@@ -89,29 +88,35 @@ impl Contract {
             //since we turned the keys into an iterator, we need to turn it back into a vector to return
             .collect()
     }
-
+    
     pub fn get_random_nfts(
         &self,
         number : Option<u64>,
     )->Vec<JsonToken>{
         //iterate through each token using an iterator
         let keys = self.token_metadata_by_id.keys_as_vector();
-        //let mut rng = rand::thread_rng();
-        let mut rng = rand_xorshift::XorShiftRng::seed_from_u64(0);
+        assert!(!keys.is_empty(), "does not have any nft");
         let mut ret = vec![];
-
         let num = u64::from(number.unwrap_or(10));
+        let seeds = env::random_seed();
 
         for n in 0..num
         {
-            //let r = rand::thread_rng().gen_range(0,keys.len());
-            let r = rng.gen::<u64>() % keys.len();
-            //let token_id = keys.get(r);
-            if let Some(token_id) = keys.get(r)
-            {
+            let ran = *seeds.get(n as usize).unwrap_or(&0);
+            let r = (ran as u64 ) % keys.len();
+            if let Some(token_id) = keys.get(r){
                 ret.push(self.nft_token(token_id).unwrap());
             }
         }
-        return ret;
+        ret
+    }
+
+    // get next moment for mint and percentage success
+    pub fn get_mint(&self) -> (u64, u8) {
+        let mut d = self.last_mint_moment + DEFAULT_MINT_TIME;
+        d /= 1_000_000; //ms
+        let percent = ((MAX_NUMBER_OF_NFT - self.token_metadata_by_id.len())*100/MAX_NUMBER_OF_NFT) as u8;
+
+        (d, percent)
     }
 }
