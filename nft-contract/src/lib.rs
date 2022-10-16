@@ -53,6 +53,9 @@ pub struct Contract {
     //keeps track of the metadata for the contract
     pub metadata: LazyOption<NFTContractMetadata>,
 
+    // track of address have get first mint
+    pub first_mint_address: Vec<AccountId>,
+
     //keep track of last mint moment
     pub last_mint_moment: u64,
 }
@@ -115,6 +118,7 @@ impl Contract {
                 StorageKey::NFTContractMetadata.try_to_vec().unwrap(),
                 Some(&metadata),
             ),
+            first_mint_address: vec![],
             last_mint_moment: env::block_timestamp_ms(),
         };
 

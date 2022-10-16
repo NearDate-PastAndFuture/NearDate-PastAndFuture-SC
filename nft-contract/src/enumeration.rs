@@ -118,4 +118,15 @@ impl Contract {
 
         (d, percent)
     }
+
+    // get init time
+    pub fn get_init_time(&self) -> (u64) {
+        self.last_mint_moment
+    }
+
+    // 
+    pub fn get_first_mint_address(&self, account_id: AccountId) -> bool {
+        let first_mint = self.first_mint_address.iter().filter(|x| **x == account_id).collect::<Vec<_>>();
+        first_mint.is_empty()
+    }
 }

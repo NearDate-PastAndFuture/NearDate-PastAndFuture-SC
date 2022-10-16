@@ -53,8 +53,8 @@ impl Contract {
         perpetual_royalties: Option<HashMap<AccountId, u32>>,
         price: Option<U128>,
     ) {
-        let d =  env::block_timestamp_ms() - self.last_mint_moment;
-        assert!(d > DEFAULT_MINT_TIME, "{} ms to next mint", (DEFAULT_MINT_TIME - d));
+        let d =  env::block_timestamp_ms();// - self.last_mint_moment;
+        assert!(d >= DEFAULT_MINT_TIME + self.last_mint_moment, "{} ms to next mint", (DEFAULT_MINT_TIME + self.last_mint_moment - d));
         //TODO assert() format token_id
         let is_valid = is_valid_date(token_id.clone());
         assert!(is_valid, "not a validate date");
@@ -63,15 +63,14 @@ impl Contract {
 
         let mut mint_fee :U128 = U128(0);
 
+        let first_mint = self.first_mint_address.iter().filter(|x| **x == account_id).collect::<Vec<_>>();
+        let first_mint = first_mint.is_empty();
         if account_id == self.owner_id {
             mint_fee = U128(0);
         }
-        else if(!self.tokens_per_owner.contains_key(&receiver_id)) //first time mint 
+        else if first_mint  //first time mint 
         {
             mint_fee = U128(0);
-        }else if let Some(mint_price) = price
-        {
-            mint_fee = mint_price ;
         }else{
             mint_fee = DEFAULT_MINT_PRICE; 
         }
@@ -126,6 +125,12 @@ impl Contract {
 
         //set last mint time
         self.last_mint_moment = env::block_timestamp_ms();
+
+        // 
+        if first_mint
+        {
+            self.first_mint_address.push(account_id);
+        }
 
         // Construct the mint log as per the events standard.
         let nft_mint_log: EventLog = EventLog {

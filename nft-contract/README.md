@@ -113,3 +113,110 @@ near call $NFT_CONTRACT_ID nft_transfer '{"receiver_id": "$MAIN_ACCOUNT_2", "tok
 
 In this call you are depositing 1 yoctoNEAR for security and so that the user will be redirected to the NEAR wallet.
 
+Note
+
+NearDate
+
+Mod Offer 
++ Buyer : Offer with lower sale price : lock token bidded to market account.
++ Seller  : Accept offer.
++ Condition : Seller accept or Buyer cancel.
+
+Add Rent slot
++ add rented_account_id: UnorderedSet<AccountId> to Token, JsonToken. 
+
+Save reference data(text) to centralized db or on-chain
+
+
+#### NFT CONTRACT
+
+
+export NFT_CONTRACT_ID=nft-contract-test1.hdtung.testnet
+export NFT_MARKETPLACE_ID=nft-market-test.hdtung.testnet
+export MAIN_ACCOUNT=hdtung.testnet
+export MAIN_ACCOUNT_2=stack2829.testnet
+export BUYER_1=buyer1.hdtung.testnet
+export BUYER_2=buyer2.hdtung.testnet
+
+## delete
+near delete $NFT_CONTRACT_ID hdtung.testnet	
+
+near create-account $NFT_CONTRACT_ID —masterAccount hdtung.testnet --initialBalance 10
+near create-account $NFT_MARKETPLACE_ID —masterAccount hdtung.testnet --initialBalance 10
+
+###deploy nft contract 
+near deploy --accountId $NFT_CONTRACT_ID --wasmFile out/main.wasm
+
+###init nft contract 
+near call $NFT_CONTRACT_ID new_default_meta '{"owner_id": "'$NFT_CONTRACT_ID'"}' --accountId $NFT_CONTRACT_ID
+
+## view
+near view $NFT_CONTRACT_ID nft_metadata
+
+### mint nft
+near call $NFT_CONTRACT_ID nft_mint '{"token_id": "20230030”, "metadata": {"title": "Dollar Day", "description": "history", "media": ""}, "receiver_id": "'$MAIN_ACCOUNT'", "message_url": "https://gateway.pinata.cloud/ipfs/QmTfk6u3W7PGhY4Y1Zt32TuJghmi7jfGTSxX95fFQJDFp2/19330605.txt"}' --accountId $MAIN_ACCOUNT --amount 0.1
+
+### view nft
+near view $NFT_CONTRACT_ID nft_token '{"token_id":"token-2"}'
+
+### test transfer nft 
+near call $NFT_CONTRACT_ID nft_transfer '{"receiver_id" : "'$MAIN_ACCOUNT_2'", "token_id": "token-1", "memo" : "NearDate NFT"}' --accountId $MAIN_ACCOUNT --depositYocto 1
+
+
+####￼ MARKETPLACE CONTRACT
+
+export NFT_MARKETPLACE_ID=nft-marketplace.hdtung.testnet
+
+#￼# # deploy nft marketplace contract 
+near deploy --accountId $NFT_MARKETPLACE_ID --wasmFile out/market.wasm
+
+###init -> set owner
+near call $NFT_MARKETPLACE_ID new '{"owner_id" : "'$NFT_MARKETPLACE_ID'"}'  --accountId $NFT_MARKETPLACE_ID
+
+###before list nft to market, account need to deposit for storage
+near call $NFT_CONTRACT_ID storage_deposit '{"account_id":"'$MAIN_ACCOUNT'"}' --accountId $MAIN_ACCOUNT  --deposit 0.1
+
+### list nft to market by call approval to nft contract with price
+near call $NFT_CONTRACT_ID nft_approve '{"token_id": "token-2", "account_id" : "'$NFT_MARKETPLACE_ID'", "msg" : "{ \"sale_conditions\" : \"300000000000000000000000\" }"}' --accountId $MAIN_ACCOUNT --deposit 0.01
+
+### view sale object from token-id
+near view $NFT_MARKETPLACE_ID get_sale '{"nft_contract_token":"nft-contract.hdtung.testnet.token-2"}'
+
+### view sales object from accountId 
+near view $NFT_MARKETPLACE_ID get_sales_by_owner_id '{"account_id":"'$MAIN_ACCOUNT'", "from_index":"0", "limit" : '3'}'
+
+###  buy
+near call $NFT_MARKETPLACE_ID offer '{"nft_contract_id":"'$NFT_CONTRACT_ID'", "token_id" : "token-1”}’ --accountId buyer1.hdtung.testnet --deposit 0.3 --gas 300000000000000
+
+
+### update-sell-price
+near call nft-marketplace.hdtung.testnet update_price '{"nft_contract_id" : "nft-contract.hdtung.testnet", "token_id" : "token-1", "price" : "300000000000000000000000" }' --accountId $MAIN_ACCOUNT --depositYocto 1
+
+
+### bid token
+near call $NFT_MARKETPLACE_ID bid_token '{"token_id": "19330605"}' --accountId $MAIN_ACCOUNT  --deposit 0.4
+
+### view bid token by account id
+near view $NFT_MARKETPLACE_ID get_bid_token_by_account_id '{"account_id" : "'$MAIN_ACCOUNT'"}' --accountId $MAIN_ACCOUNT
+
+### view bids token by tokenid
+near view $NFT_MARKETPLACE_ID get_bid_token_by_token_id '{"token_id" : "19330605"}' --accountId $MAIN_ACCOUNT
+
+### cancel
+near call $NFT_MARKETPLACE_ID bid_token_cancel_and_widthdraw '{"bid_id" : 0}' --a
+ccountId $MAIN_ACCOUNT
+
+### bid rent
+near call $NFT_MARKETPLACE_ID bid_rent '{"token_id": "19330605", "message" : "http:://google.com", "start_at": 1660463599, "expire_at" : 1660467199}' --accountId $MAIN_ACCOUNT  --deposit 0.4
+
+### view bid  rent by tokenid 
+near view $NFT_MARKETPLACE_ID get_bid_rent_by_token_id '{"token_id" : "19330605"}' --accountId $MAIN_ACCOUNT
+
+### view bid rent by account id
+near view $NFT_MARKETPLACE_ID get_bid_rent_by_account_id '{"account_id" : "'$MAIN_ACCOUNT'"}' --accountId $MAIN_ACCOUNT
+
+### accept bid rent
+near call $NFT_MARKETPLACE_ID accept_bid_rent '{"token_id" : "19330605", "bid_id" :3}’ --accountId $MAIN_ACCOUNT_2 --depositYocto 1
+
+### view rented by token id 
+near view $NFT_MARKETPLACE_ID get_rent_by_token_id '{"token_id" : "19330605"}' --accountId $MAIN_ACCOUNT
