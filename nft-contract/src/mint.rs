@@ -132,8 +132,14 @@ impl Contract {
             self.first_mint_address.push(account_id);
         }
 
-        // Construct the mint log as per the events standard.
-        let nft_mint_log: EventLog = EventLog {
+        //calculate the required storage which was the used - initial
+        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage ;
+
+        //refund any excess storage if the user attached too much. Panic if they didn't attach enough to cover the required.
+        refund_deposit_mint(required_storage_in_bytes , mint_fee.0);
+
+          // Construct the mint log as per the events standard.
+          let nft_mint_log: EventLog = EventLog {
             // Standard name ("nep171").
             standard: NFT_STANDARD_NAME.to_string(),
             // Version of the standard ("nft-1.0.0").
@@ -144,6 +150,8 @@ impl Contract {
                 owner_id: token.owner_id.to_string(),
                 // Vector of token IDs that were minted.
                 token_ids: vec![token_id.to_string()],
+                // storage used
+                storage_used: required_storage_in_bytes,
                 // An optional memo to include.
                 memo: None,
             }]),
@@ -152,10 +160,5 @@ impl Contract {
         // Log the serialized json.
         env::log_str(&nft_mint_log.to_string());
 
-        //calculate the required storage which was the used - initial
-        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage ;
-
-        //refund any excess storage if the user attached too much. Panic if they didn't attach enough to cover the required.
-        refund_deposit_mint(required_storage_in_bytes , mint_fee.0);
     }
 }

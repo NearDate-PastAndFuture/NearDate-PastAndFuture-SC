@@ -51,6 +51,7 @@ impl fmt::Display for EventLog {
 pub struct NftMintLog {
     pub owner_id: String,
     pub token_ids: Vec<String>,
+    pub storage_used: u64,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
